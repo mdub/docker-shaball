@@ -1,0 +1,55 @@
+#! /usr/bin/env ruby
+
+require "clamp"
+require "digest/sha1"
+
+Clamp do
+
+  self.description = "Bundle docker images into a tar-ball, with a unique name based on content"
+
+  option "--pull", :flag, "pull the named images first"
+
+  option "--manifest", :flag, "just print the image manifest"
+
+  parameter "IMAGE ...", "image name"
+
+  def execute
+    if pull?
+      image_names.each do |name|
+        system("docker pull #{name}")
+        signal_error("docker pull failed") unless $?.success?
+      end
+    end
+    if manifest?
+      puts image_manifest
+      return
+    end
+    manifest_checksum = Digest::SHA1.hexdigest(image_manifest)
+    output_file_name = "#{manifest_checksum}.tar.gz"
+    system("set -o pipefail; docker save #{image_names.join(' ')} | gzip > #{output_file_name}")
+    if $?.success?
+      puts output_file_name
+    else
+      signal_error("docker save failed")
+    end
+  end
+
+  private
+
+  def image_names
+    image_list.map do |name|
+      name += ":latest" unless name.index(":")
+      name
+    end.uniq.sort
+  end
+
+  def image_manifest
+    inspect_output = `docker inspect -f '{{ .Config.Image }}' #{image_names.join(' ')}`
+    signal_error("docker inspect returned error") unless $?.success?
+    image_ids = inspect_output.lines.map(&:strip)
+    image_names.zip(image_ids).map do |image_name_and_id|
+      image_name_and_id.join(" ") + "\n"
+    end.join
+  end
+
+end
