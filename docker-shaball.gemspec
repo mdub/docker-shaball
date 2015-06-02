@@ -7,9 +7,9 @@ Gem::Specification.new do |spec|
   spec.name          = "docker-shaball"
   spec.version       = "0.1.0"
   spec.authors       = ["Mike Williams", "Luke Carter-Key"]
-  spec.email         = ["gpde@rea-group.com"]
+  spec.email         = ["mdub@dogbiscuit.org", "luke.carterkey@gmail.com"]
   spec.summary       = %q{Create a tar-ball containing some Docker images}
-  spec.homepage      = "https://git.realestate.com.au/gpde/docker-shaball"
+  spec.homepage      = "https://github.com/mdub/docker-shaball"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
