@@ -5,7 +5,7 @@ $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 Gem::Specification.new do |spec|
 
   spec.name          = "docker-shaball"
-  spec.version       = "0.1.0"
+  spec.version       = "0.1.1"
   spec.authors       = ["Mike Williams", "Luke Carter-Key"]
   spec.email         = ["mdub@dogbiscuit.org", "luke.carterkey@gmail.com"]
   spec.summary       = %q{Create a tar-ball containing some Docker images}
