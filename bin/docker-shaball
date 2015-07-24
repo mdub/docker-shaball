@@ -26,15 +26,24 @@ Clamp do
     end
     manifest_checksum = Digest::SHA1.hexdigest(image_manifest)
     output_file_name = "#{manifest_checksum}.tar.gz"
-    system("set -o pipefail; docker save #{image_names.join(' ')} | gzip > #{output_file_name}")
-    if $?.success?
-      puts output_file_name
-    else
-      signal_error("docker save failed")
-    end
+
+    save_images(image_names, output_file_name)
+    puts output_file_name
   end
 
   private
+
+  def save_images(image_names, output_file_name)
+    r,w = IO.pipe
+    save = spawn("docker save #{image_names.join(' ')}", out: w)
+    gzip = spawn("gzip", in: r, out: [output_file_name, 'w'])
+    r.close
+    w.close
+    Process.wait save
+    signal_error("docker save failed") unless $?.success?
+    Process.wait gzip
+    signal_error("gzip failed") unless $?.success?
+  end
 
   def image_names
     image_list.map do |name|
