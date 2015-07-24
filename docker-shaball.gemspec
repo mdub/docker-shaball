@@ -15,7 +15,7 @@ Gem::Specification.new do |spec|
   spec.files         = `git ls-files -z`.split("\x0")
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
 
-  spec.add_runtime_dependency "clamp", "~> 0.6.4"
+  spec.add_runtime_dependency "clamp", ">= 0.6"
 
   spec.add_development_dependency "bundler", "~> 1.10"
   spec.add_development_dependency "rake", "~> 10.4"
