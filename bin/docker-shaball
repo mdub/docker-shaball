@@ -2,12 +2,14 @@
 
 require "clamp"
 require "digest/sha1"
+require "fileutils"
 
 Clamp do
 
   self.description = "Bundle docker images into a tar-ball, with a unique name based on content"
 
   option "--pull", :flag, "pull the named images first"
+  option "--force", :flag, "force re-generation of output file"
 
   option "--manifest", :flag, "just print the image manifest"
 
@@ -26,7 +28,7 @@ Clamp do
     end
     manifest_checksum = Digest::SHA1.hexdigest(image_manifest)
     output_file_name = "#{manifest_checksum}.tar.gz"
-    unless File.exist?(output_file_name)
+    unless !force? && File.exist?(output_file_name)
       save_images(image_names, output_file_name)
     end
     puts output_file_name
@@ -35,6 +37,7 @@ Clamp do
   private
 
   def save_images(image_names, output_file_name)
+    FileUtils.safe_unlink(output_file_name)
     tmp_file_name = "#{output_file_name}.tmp"
     r, w = IO.pipe
     save = spawn("docker save #{image_names.join(' ')}", :out => w)
