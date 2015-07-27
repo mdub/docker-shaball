@@ -16,7 +16,7 @@ Clamp do
   def execute
     if pull?
       image_names.each do |name|
-        system("docker pull #{name}")
+        system("docker pull #{name} > /dev/null")
         signal_error("docker pull failed") unless $?.success?
       end
     end
