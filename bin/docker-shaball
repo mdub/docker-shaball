@@ -26,23 +26,26 @@ Clamp do
     end
     manifest_checksum = Digest::SHA1.hexdigest(image_manifest)
     output_file_name = "#{manifest_checksum}.tar.gz"
-
-    save_images(image_names, output_file_name)
+    unless File.exist?(output_file_name)
+      save_images(image_names, output_file_name)
+    end
     puts output_file_name
   end
 
   private
 
   def save_images(image_names, output_file_name)
-    r,w = IO.pipe
-    save = spawn("docker save #{image_names.join(' ')}", out: w)
-    gzip = spawn("gzip", in: r, out: [output_file_name, 'w'])
+    tmp_file_name = "#{output_file_name}.tmp"
+    r, w = IO.pipe
+    save = spawn("docker save #{image_names.join(' ')}", :out => w)
+    gzip = spawn("gzip", :in => r, :out => [tmp_file_name, "w"])
     r.close
     w.close
     Process.wait save
     signal_error("docker save failed") unless $?.success?
     Process.wait gzip
     signal_error("gzip failed") unless $?.success?
+    File.rename(tmp_file_name, output_file_name)
   end
 
   def image_names
@@ -53,7 +56,7 @@ Clamp do
   end
 
   def image_manifest
-    inspect_output = `docker inspect -f '{{ .Config.Image }}' #{image_names.join(' ')}`
+    inspect_output = `docker inspect -f '{{ .Config.Image }}' #{image_names.join(" ")}`
     signal_error("docker inspect returned error") unless $?.success?
     image_ids = inspect_output.lines.map(&:strip)
     image_names.zip(image_ids).map do |image_name_and_id|
