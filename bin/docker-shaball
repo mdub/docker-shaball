@@ -51,15 +51,17 @@ Clamp do
   def generate_shaball(image_names, target_blob)
     save_r, save_w = IO.pipe
     gzip_r, gzip_w = IO.pipe
-    save = spawn("docker save #{image_names.join(' ')}", :out => save_w)
+    saver = spawn("docker save #{image_names.join(' ')}", :out => save_w)
     gzip = spawn("gzip", :in => save_r, :out => gzip_w)
     [save_r, save_w, gzip_w].each(&:close)
     target_blob.write(gzip_r)
     gzip_r.close
-    Process.wait save
-    signal_error("docker save failed") unless $?.success?
-    Process.wait gzip
-    signal_error("gzip failed") unless $?.success?
+  ensure
+    Process.wait(saver)
+    unless $?.success?
+      target_blob.delete
+      signal_error("docker save failed")
+    end
   end
 
   def image_names
