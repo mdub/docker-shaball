@@ -12,6 +12,7 @@ Clamp do
 
   option "--pull", :flag, "pull the named images first"
   option "--force", :flag, "force re-generation of output file"
+  option "--[no-]gzip", :flag, "compress using gzip(1)", :default => true
 
   option "--manifest", :flag, "just print the image manifest"
 
@@ -29,7 +30,8 @@ Clamp do
       return
     end
     manifest_checksum = Digest::SHA1.hexdigest(image_manifest)
-    output_file_name = "#{manifest_checksum}.tar.gz"
+    output_file_name = "#{manifest_checksum}.tar"
+    output_file_name += ".gz" if gzip?
     stored_shaball = store[output_file_name]
     if force? || !stored_shaball.exists?
       logger.info("Generating #{output_file_name}")
@@ -49,13 +51,18 @@ Clamp do
   end
 
   def generate_shaball(image_names, target_blob)
-    save_r, save_w = IO.pipe
-    gzip_r, gzip_w = IO.pipe
-    saver = spawn("docker save #{image_names.join(' ')}", :out => save_w)
-    gzip = spawn("gzip", :in => save_r, :out => gzip_w)
-    [save_r, save_w, gzip_w].each(&:close)
-    target_blob.write(gzip_r)
-    gzip_r.close
+    save_out, save_in = IO.pipe
+    saver = spawn("docker save #{image_names.join(' ')}", :out => save_in)
+    save_in.close
+    data = save_out
+    if gzip?
+      gzip_out, gzip_in = IO.pipe
+      spawn("gzip", :in => data, :out => gzip_in)
+      gzip_in.close
+      data = gzip_out
+    end
+    target_blob.write(data)
+    data.close
   ensure
     Process.wait(saver)
     unless $?.success?
