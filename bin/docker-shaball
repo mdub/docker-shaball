@@ -1,6 +1,7 @@
 #! /usr/bin/env ruby
 
 require "clamp"
+require "console_logger"
 require "digest/sha1"
 require "fileutils"
 
@@ -36,7 +37,12 @@ Clamp do
 
   private
 
+  def logger
+    @logger ||= ConsoleLogger.new($stderr)
+  end
+
   def save_images(image_names, output_file_name)
+    logger.info("Generating #{output_file_name}")
     FileUtils.safe_unlink(output_file_name)
     tmp_file_name = "#{output_file_name}.tmp"
     r, w = IO.pipe
