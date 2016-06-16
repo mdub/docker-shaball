@@ -1,5 +1,6 @@
 #! /usr/bin/env ruby
 
+require "blobby"
 require "clamp"
 require "console_logger"
 require "digest/sha1"
@@ -29,8 +30,10 @@ Clamp do
     end
     manifest_checksum = Digest::SHA1.hexdigest(image_manifest)
     output_file_name = "#{manifest_checksum}.tar.gz"
-    unless !force? && File.exist?(output_file_name)
-      save_images(image_names, output_file_name)
+    stored_shaball = store[output_file_name]
+    if force? || !stored_shaball.exists?
+      logger.info("Generating #{output_file_name}")
+      generate_shaball(image_names, stored_shaball)
     end
     puts output_file_name
   end
@@ -41,20 +44,22 @@ Clamp do
     @logger ||= ConsoleLogger.new($stderr)
   end
 
-  def save_images(image_names, output_file_name)
-    logger.info("Generating #{output_file_name}")
-    FileUtils.safe_unlink(output_file_name)
-    tmp_file_name = "#{output_file_name}.tmp"
-    r, w = IO.pipe
-    save = spawn("docker save #{image_names.join(' ')}", :out => w)
-    gzip = spawn("gzip", :in => r, :out => [tmp_file_name, "w"])
-    r.close
-    w.close
+  def store
+    Blobby::FilesystemStore.new(".")
+  end
+
+  def generate_shaball(image_names, target_blob)
+    save_r, save_w = IO.pipe
+    gzip_r, gzip_w = IO.pipe
+    save = spawn("docker save #{image_names.join(' ')}", :out => save_w)
+    gzip = spawn("gzip", :in => save_r, :out => gzip_w)
+    [save_r, save_w, gzip_w].each(&:close)
+    target_blob.write(gzip_r)
+    gzip_r.close
     Process.wait save
     signal_error("docker save failed") unless $?.success?
     Process.wait gzip
     signal_error("gzip failed") unless $?.success?
-    File.rename(tmp_file_name, output_file_name)
   end
 
   def image_names
